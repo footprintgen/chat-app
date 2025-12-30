@@ -5,11 +5,16 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, {
-cors: {
-origin: "https://footprintgen.github.io/chat-app/",
-methods: ["GET", "POST"]
-}
+const io = require('socket.io')(server, {
+    cors: {
+        origin: [
+            "https://footprintgen.github.io",
+            "http://localhost:3000",
+            "http://127.0.0.1:5500"  // For VS Code Live Server
+        ],
+        methods: ["GET", "POST"],
+        credentials: true
+    }
 });
 
 // Serve static files
