@@ -335,7 +335,7 @@
         <div class="username-form">
             <h2>Welcome to Video Chat!</h2>
             <input type="text" id="usernameInput" placeholder="Enter your username..." autocomplete="off" autofocus>
-            <button id="joinButton">Join Chat</button>
+            <button onclick="joinChat()">Join Chat</button>
         </div>
     </div>
 
@@ -356,7 +356,7 @@
                 
                 <div class="file-input-wrapper">
                     <button class="button" id="videoButton" disabled>📹 Video</button>
-                    <input type="file" id="videoInput" accept="video/*">
+                    <input type="file" id="videoInput" accept="video/*" onchange="handleVideoSelect(event)">
                 </div>
             </div>
         </div>
@@ -365,8 +365,8 @@
     <div class="video-preview" id="videoPreview">
         <video id="previewVideo" controls></video>
         <div class="video-preview-actions">
-            <button class="button" id="sendVideoBtn">Send</button>
-            <button class="button" id="cancelVideoBtn">Cancel</button>
+            <button class="button" onclick="sendVideo()">Send</button>
+            <button class="button" onclick="cancelVideo()">Cancel</button>
         </div>
     </div>
     
@@ -382,9 +382,10 @@
         let selectedVideoFile = null;
         let messageQueue = [];
         let isConnected = false;
+        let eventListenersAttached = false;
         let welcomeVideoShown = false;
         
-        // Configuration for default video
+        // Configuration for default video - using video.mp4
         const DEFAULT_VIDEO_CONFIG = {
             videoUrl: 'https://footprintgen.github.io/chat-app/video.mp4',
             title: '🎬 Welcome to Our Chat Room!',
@@ -405,8 +406,11 @@
                 <div class="welcome-video-container">
                     <video 
                         class="welcome-video" 
-                        controls>
-                        <source src="${DEFAULT_VIDEO_CONFIG.videoUrl}" type="video/mp4">
+                        controls 
+                        ${DEFAULT_VIDEO_CONFIG.autoplay ? 'autoplay' : ''} 
+                        ${DEFAULT_VIDEO_CONFIG.muted ? 'muted' : ''}
+                        poster="">
+                        <source src="${DEFAULT_VIDEO_CONFIG.localVideo}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
                 </div>
@@ -416,11 +420,20 @@
             welcomeDiv.innerHTML = videoContent;
             messagesDiv.appendChild(welcomeDiv);
             
+            // Add a system message after the video
             setTimeout(() => {
-                addSystemMessage('Welcome! Feel free to start chatting!');
+                addSystemMessage('Welcome! Feel free to start chatting or share your own videos!');
             }, 1000);
             
             welcomeVideoShown = true;
+        }
+        
+        function getStoredUsername() {
+            return localStorage.getItem('chatUsername');
+        }
+        
+        function setStoredUsername(username) {
+            localStorage.setItem('chatUsername', username);
         }
         
         function joinChat() {
@@ -428,11 +441,15 @@
             const username = usernameInput.value.trim() || 'Anonymous';
             
             currentUser = { username: username };
-            localStorage.setItem('chatUsername', username);
+            setStoredUsername(username);
+            
+            usernameInput.value = '';
             
             document.getElementById('usernameModal').classList.add('hidden');
             
+            // Show welcome video when user joins
             showWelcomeVideo();
+            
             initializeSocket();
         }
         
@@ -450,11 +467,14 @@
                 isConnected = true;
                 currentUser.id = socket.id;
                 
+                document.getElementById('messageInput').value = '';
+                
                 document.getElementById('messageInput').disabled = false;
                 document.getElementById('sendButton').disabled = false;
                 document.getElementById('videoButton').disabled = false;
                 
                 updateConnectionStatus('connected');
+                
                 socket.emit('user-join', currentUser.username);
                 
                 while (messageQueue.length > 0) {
@@ -479,7 +499,31 @@
                 updateConnectionStatus('reconnecting');
             });
             
+            socket.on('reconnect_failed', () => {
+                console.log('Failed to reconnect');
+                updateConnectionStatus('disconnected');
+            });
+            
             socket.on('message-history', (messages) => {
+                // Keep the welcome video at the top
+                const messagesDiv = document.getElementById('chatMessages');
+                const welcomeVideo = messagesDiv.querySelector('.system-video');
+                const systemMessages = messagesDiv.querySelectorAll('.system-message');
+                
+                // Clear messages except welcome video and first system message
+                messagesDiv.innerHTML = '';
+                
+                // Re-add welcome video if it existed
+                if (welcomeVideo) {
+                    messagesDiv.appendChild(welcomeVideo);
+                }
+                
+                // Re-add first system message if it existed
+                if (systemMessages.length > 0) {
+                    messagesDiv.appendChild(systemMessages[0]);
+                }
+                
+                // Add historical messages
                 messages.forEach(msg => addMessage(msg));
             });
             
@@ -498,6 +542,39 @@
             socket.on('users-update', (users) => {
                 updateUserCount(users.length);
             });
+            
+            if (!eventListenersAttached) {
+                attachEventListeners();
+                eventListenersAttached = true;
+            }
+        }
+        
+        function attachEventListeners() {
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+            
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            document.getElementById('usernameInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    joinChat();
+                }
+            });
+            
+            // Prevent duplicate message on mobile
+            document.getElementById('messageInput').addEventListener('focus', function() {
+                // Don't clear on focus, only clear after sending
+            });
+            
+            document.getElementById('messageInput').addEventListener('submit', (e) => {
+                e.preventDefault();
+                return false;
+            });
         }
         
         function sendMessage() {
@@ -512,10 +589,13 @@
                 
                 if (socket && isConnected) {
                     socket.emit('send-message', messageData);
+                    // Clear input immediately after sending
                     input.value = '';
+                    input.blur(); // Remove focus on mobile to hide keyboard
                 } else {
                     messageQueue.push(messageData);
                     updateConnectionStatus('reconnecting');
+                    // Still clear input even if queued
                     input.value = '';
                 }
             }
@@ -527,7 +607,15 @@
             messageDiv.className = 'message' + (message.userId === currentUser.id ? ' own' : '');
             
             let content = `<div class="message-username">${escapeHtml(message.username)}</div>`;
-            content += `<div>${escapeHtml(message.text || '')}</div>`;
+            
+            if (message.type === 'video' && message.videoUrl) {
+                content += `<video controls class="message-video">
+                    <source src="${escapeHtml(message.videoUrl)}" type="video/mp4">
+                    Your browser does not support video.
+                </video>`;
+            } else {
+                content += `<div>${escapeHtml(message.text || '')}</div>`;
+            }
             
             const time = new Date(message.timestamp).toLocaleTimeString([], { 
                 hour: '2-digit', 
@@ -537,6 +625,7 @@
             
             messageDiv.innerHTML = content;
             messagesDiv.appendChild(messageDiv);
+            
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
@@ -580,6 +669,7 @@
         function handleVideoSelect(event) {
             const file = event.target.files[0];
             if (file && file.type.startsWith('video/')) {
+                // Check file size (limit to 100MB)
                 if (file.size > 100 * 1024 * 1024) {
                     alert('Video file is too large. Please select a file smaller than 100MB.');
                     event.target.value = '';
@@ -592,12 +682,61 @@
                 previewVideo.src = videoURL;
                 document.getElementById('videoPreview').style.display = 'block';
             }
+            // Clear the file input
             event.target.value = '';
         }
         
         function sendVideo() {
-            alert('Video upload feature is not yet implemented on the server.');
-            cancelVideo();
+            if (!selectedVideoFile || !socket || !isConnected) {
+                if (!isConnected) {
+                    alert('Please wait for connection to be established');
+                }
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('video', selectedVideoFile);
+            
+            document.getElementById('uploadProgress').style.display = 'block';
+            
+            const xhr = new XMLHttpRequest();
+            
+            // Track upload progress
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    document.getElementById('progressBar').value = percentComplete;
+                }
+            });
+            
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        socket.emit('send-video', { 
+                            videoUrl: data.url,
+                            timestamp: new Date().toISOString()
+                        });
+                        cancelVideo();
+                    } else {
+                        alert('Failed to upload video: ' + (data.error || 'Unknown error'));
+                    }
+                } else {
+                    alert('Failed to upload video. Please try again.');
+                }
+                document.getElementById('uploadProgress').style.display = 'none';
+                document.getElementById('progressBar').value = 0;
+            });
+            
+            xhr.addEventListener('error', () => {
+                console.error('Error uploading video');
+                alert('Failed to upload video. Please check your connection and try again.');
+                document.getElementById('uploadProgress').style.display = 'none';
+                document.getElementById('progressBar').value = 0;
+            });
+            
+            xhr.open('POST', '/upload-video');
+            xhr.send(formData);
         }
         
         function cancelVideo() {
@@ -605,10 +744,8 @@
             document.getElementById('videoPreview').style.display = 'none';
             document.getElementById('videoInput').value = '';
             const previewVideo = document.getElementById('previewVideo');
-            if (previewVideo.src) {
-                URL.revokeObjectURL(previewVideo.src);
-                previewVideo.src = '';
-            }
+            previewVideo.src = '';
+            URL.revokeObjectURL(previewVideo.src);
         }
         
         function escapeHtml(text) {
@@ -617,44 +754,9 @@
             return div.innerHTML;
         }
         
-        // Event Listeners
-        window.addEventListener('DOMContentLoaded', () => {
-            // Join button
-            document.getElementById('joinButton').addEventListener('click', joinChat);
-            
-            // Username input enter key
-            document.getElementById('usernameInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    joinChat();
-                }
-            });
-            
-            // Send button
-            document.getElementById('sendButton').addEventListener('click', sendMessage);
-            
-            // Message input enter key
-            document.getElementById('messageInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-            
-            // Video input
-            document.getElementById('videoInput').addEventListener('change', handleVideoSelect);
-            
-            // Video preview buttons
-            document.getElementById('sendVideoBtn').addEventListener('click', sendVideo);
-            document.getElementById('cancelVideoBtn').addEventListener('click', cancelVideo);
-            
-            // Video button click
-            document.getElementById('videoButton').addEventListener('click', () => {
-                document.getElementById('videoInput').click();
-            });
-            
-            // Check for stored username
-            const storedUsername = localStorage.getItem('chatUsername');
+        // Check for stored username on page load
+        window.addEventListener('load', () => {
+            const storedUsername = getStoredUsername();
             if (storedUsername) {
                 document.getElementById('usernameInput').value = storedUsername;
             }
@@ -665,6 +767,25 @@
             if (socket) {
                 socket.disconnect();
             }
+        });
+        
+        // Handle visibility change (mobile app switching)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('Page hidden');
+            } else {
+                console.log('Page visible');
+                // Clear input when page becomes visible to prevent duplicate sends
+                if (document.getElementById('messageInput')) {
+                    document.getElementById('messageInput').value = '';
+                }
+            }
+        });
+        
+        // Prevent accidental form submissions
+        document.addEventListener('submit', (e) => {
+            e.preventDefault();
+            return false;
         });
     </script>
 </body>
