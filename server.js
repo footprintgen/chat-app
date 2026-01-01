@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
+const socketIO = require('socket.io');
 const path = require('path');
-const cors = require('cors'); // Add this
 
 const app = express();
 const server = http.createServer(app);
@@ -10,22 +10,15 @@ const io = require('socket.io')(server, {
         origin: [
             "https://footprintgen.github.io",
             "http://localhost:3000",
-            "http://127.0.0.1:5500",
-            "*"  // Allow all origins for testing
+            "http://127.0.0.1:5500"  // For VS Code Live Server
         ],
         methods: ["GET", "POST"],
         credentials: true
     }
 });
 
-// Add CORS middleware
-app.use(cors());
-
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Add JSON middleware
-app.use(express.json());
+// Serve static files
+app.use(express.static('public'));
 
 // Store message history and active users
 let messageHistory = [];
@@ -51,21 +44,13 @@ app.get('/api/messages', (req, res) => {
     });
 });
 
-app.get('/api/test', (req, res) => {
-    res.json({ 
-        status: 'Server is running', 
-        messageCount: messageHistory.length,
-        userCount: activeUsers.size 
-    });
-});
-
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('New user connected:', socket.id);
     
     // Handle user joining
     socket.on('user-join', (username) => {
-        // Validate username
+        // Validate username (optional improvement)
         const finalUsername = username?.trim() || `User${Math.floor(Math.random() * 1000)}`;
         
         activeUsers.set(socket.id, {
@@ -82,14 +67,6 @@ io.on('connection', (socket) => {
             username: activeUsers.get(socket.id).username,
             timestamp: new Date().toISOString()
         });
-        
-        messageHistory.push(joinMessage);
-        if (messageHistory.length > 100) {
-            messageHistory.shift();
-        }
-        
-        // Notify all users about new user
-        io.emit('new-message', joinMessage);
         
         // Send updated user list to all clients
         io.emit('users-update', Array.from(activeUsers.values()));
@@ -121,24 +98,7 @@ io.on('connection', (socket) => {
     
     // Handle incoming messages
     socket.on('send-message', (data) => {
-        console.log('📨 Received message:', data);
-        
-        // Handle different message types
-        if (data.isVideo) {
-            // Video messages - don't store but broadcast
-            const videoMessage = {
-                id: Date.now() + Math.random(),
-                isVideo: true,
-                videoUrl: data.videoUrl,
-                username: activeUsers.get(socket.id)?.username || 'Anonymous',
-                userId: socket.id,
-                timestamp: new Date().toISOString()
-            };
-            io.emit('new-message', videoMessage);
-            return;
-        }
-        
-        // Validate text message
+        // Validate message (optional improvement)
         if (!data.text || data.text.trim() === '') {
             return; // Don't process empty messages
         }
@@ -146,7 +106,7 @@ io.on('connection', (socket) => {
         const user = activeUsers.get(socket.id);
         const message = {
             id: Date.now() + Math.random(),
-            text: data.text.trim(),
+            text: data.text.trim(),  // Trim whitespace
             username: user ? user.username : 'Anonymous',
             userId: socket.id,
             timestamp: new Date().toISOString()
@@ -157,8 +117,6 @@ io.on('connection', (socket) => {
         if (messageHistory.length > 100) {
             messageHistory.shift();
         }
-        
-        console.log(`💾 Stored message. Total messages: ${messageHistory.length}`);
         
         // Broadcast to all clients including sender
         io.emit('new-message', message);
@@ -181,23 +139,11 @@ io.on('connection', (socket) => {
         const user = activeUsers.get(socket.id);
         if (user) {
             activeUsers.delete(socket.id);
-            
-            // Create leave message
-            const leaveMessage = {
-                id: Date.now() + Math.random(),
-                text: `${user.username} left the chat`,
-                username: 'System',
-                timestamp: new Date().toISOString(),
-                isSystemMessage: true
-            };
-            
-            messageHistory.push(leaveMessage);
-            if (messageHistory.length > 100) {
-                messageHistory.shift();
-            }
-            
-            io.emit('new-message', leaveMessage);
             io.emit('users-update', Array.from(activeUsers.values()));
+            io.emit('user-left', {
+                username: user.username,
+                timestamp: new Date().toISOString()
+            });
         }
         console.log('User disconnected:', socket.id);
     });
@@ -205,8 +151,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📝 Access chat at: http://localhost:${PORT}`);
-    console.log(`🔧 Access admin at: http://localhost:${PORT}/admin`);
-    console.log(`📊 API test at: http://localhost:${PORT}/api/test`);
+    console.log(`Server running on port ${PORT}`);
 });
