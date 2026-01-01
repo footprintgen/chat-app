@@ -333,15 +333,15 @@
     
     <div class="username-modal" id="usernameModal">
         <div class="username-form">
-            <h2>Welcome to Video Chat!</h2>
-            <input type="text" id="usernameInput" placeholder="Enter your username..." autocomplete="off" autofocus>
-            <button onclick="joinChat()">Join Chat</button>
+            <h2>歡迎大家</h2>
+            <input type="text" id="usernameInput" placeholder="輸入你的用戶名稱" autocomplete="off" autofocus>
+            <button onclick="joinChat()">加入</button>
         </div>
     </div>
 
     <div class="chat-container">
         <div class="chat-header">
-            <h1>Live Chat Room</h1>
+            <h1>聊天室</h1>
             <div id="userCount" style="font-size: 14px; margin-top: 5px;"></div>
         </div>
         
@@ -352,9 +352,9 @@
         <div class="chat-input-container">
             <div class="chat-input-wrapper">
                 <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
-                <button id="sendButton" class="button" disabled>Send</button>
+                <button id="sendButton" class="button" disabled>傳送</button>
                 
-                <div class="file-input-wrapper">
+                <div class="file-input-wrapper" style="display: none;">
                     <button class="button" id="videoButton" disabled>📹 Video</button>
                     <input type="file" id="videoInput" accept="video/*" onchange="handleVideoSelect(event)">
                 </div>
@@ -365,8 +365,8 @@
     <div class="video-preview" id="videoPreview">
         <video id="previewVideo" controls></video>
         <div class="video-preview-actions">
-            <button class="button" onclick="sendVideo()">Send</button>
-            <button class="button" onclick="cancelVideo()">Cancel</button>
+            <button class="button" onclick="sendVideo()">傳送</button>
+            <button class="button" onclick="cancelVideo()">取消</button>
         </div>
     </div>
     
@@ -388,8 +388,8 @@
         // Configuration for default video - using video.mp4
         const DEFAULT_VIDEO_CONFIG = {
             localVideo: '/video.mp4',
-            title: '🎬 Welcome to Our Chat Room!',
-            description: 'Watch this introduction to get started with our chat features',
+            title: '🎬 歡迎來到我們的聊天室！',
+            description: '😼😼😼',
             autoplay: false,
             muted: true
         };
@@ -422,7 +422,7 @@
             
             // Add a system message after the video
             setTimeout(() => {
-                addSystemMessage('Welcome! Feel free to start chatting or share your own videos!');
+                addSystemMessage('歡迎！您可以隨意開始傾計!');
             }, 1000);
             
             welcomeVideoShown = true;
@@ -669,7 +669,7 @@
         
         function updateUserCount(count) {
             const userCountEl = document.getElementById('userCount');
-            userCountEl.textContent = `${count} user${count !== 1 ? 's' : ''} online`;
+            userCountEl.textContent = `${count} 個用戶${count !== 1 ? 's' : ''} 在線上`;
         }
         
         function handleVideoSelect(event) {
