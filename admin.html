@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Admin Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .control-panel {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        
+        .control-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .control-section h2 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-section p {
+            color: #6c757d;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .button-export {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .button-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button-clear {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .button-clear:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .refresh-button {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .refresh-button:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        
+        .debug-panel {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .debug-panel h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .debug-log {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .debug-log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .debug-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .debug-button {
+            padding: 5px 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .connection-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        .connected {
+            background: #28a745;
+        }
+        
+        .disconnected {
+            background: #dc3545;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
+        }
+        
+        .format-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .format-option {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .format-option:hover {
+            border-color: #667eea;
+        }
+        
+        .format-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .format-option input {
+            display: none;
+        }
+        
+        .message-preview {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        
+        .message-item {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <h1>🎛️ Chat Admin Control Panel</h1>
+        <p class="subtitle">Manage and control chat messages remotely</p>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <button class="refresh-button" onclick="refreshMessages()">🔄 Refresh</button>
+                <div class="stat-number" id="messageCount">0</div>
+                <div class="stat-label">Total Messages</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="connectionStatus">
+                    <span class="connection-indicator disconnected"></span>
+                    <span style="font-size: 16px;">Connecting...</span>
+                </div>
+                <div class="stat-label">Connection Status</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h2>📥 Export Chat History</h2>
+            <p>Download all chat messages in your preferred format.</p>
+            
+            <div class="format-options">
+                <label class="format-option selected">
+                    <input type="radio" name="format" value="json" checked>
+                    <div>📄 JSON</div>
+                </label>
+                <label class="format-option">
+                    <input type="radio" name="format" value="txt">
+                    <div>📝 Text</div>
+                </label>
+                <label class="format-option">
+                    <input type="radio" name="format" value="csv">
+                    <div>📊 CSV</div>
+                </label>
+            </div>
+            
+            <button class="button button-export" onclick="exportMessages()">
+                <span>💾</span>
+                <span>Export All Messages</span>
+            </button>
+        </div>
+        
+        <div class="debug-panel">
+            <h3>🔧 Debug Information</h3>
+            <div>
+                <strong>Server URL:</strong> <span id="serverUrl"></span><br>
+                <strong>Socket ID:</strong> <span id="socketId">Not connected</span><br>
+                <strong>Messages in Memory:</strong> <span id="memoryCount">0</span><br>
+                <strong>Last Update:</strong> <span id="lastUpdate">Never</span>
+            </div>
+            
+            <div class="debug-buttons">
+                <button class="debug-button" onclick="testConnection()">Test Connection</button>
+                <button class="debug-button" onclick="fetchViaHttp()">Fetch via HTTP</button>
+                <button class="debug-button" onclick="sendTestMessage()">Send Test Message</button>
+                <button class="debug-button" onclick="clearLog()">Clear Log</button>
+            </div>
+            
+            <div class="debug-log" id="debugLog"></div>
+            
+            <div class="message-preview" id="messagePreview">
+                <strong>Recent Messages:</strong>
+                <div id="messageList">No messages yet</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // Configuration
+        const SERVER_URL = 'https://chat-app-yibl.onrender.com';
+        let socket = null;
+        let chatMessages = [];
+        let debugLogs = [];
+        
+        // Debug logging
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLogs.unshift(logEntry);
+            debugLogs = debugLogs.slice(0, 50); // Keep last 50 logs
+            
+            const logDiv = document.getElementById('debugLog');
+            logDiv.innerHTML = debugLogs.map(log => 
+                `<div class="debug-log-entry">${log}</div>`
+            ).join('');
+            
+            console.log(logEntry);
+        }
+        
+        // Initialize socket connection
+        function initializeSocket() {
+            addLog(`Connecting to ${SERVER_URL}...`);
+            document.getElementById('serverUrl').textContent = SERVER_URL;
+            
+            socket = io(SERVER_URL, {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000
+            });
+            
+            socket.on('connect', () => {
+                addLog(`✅ Connected! Socket ID: ${socket.id}`);
+                document.getElementById('socketId').textContent = socket.id;
+                updateConnectionStatus(true);
+                
+                // Request messages after connection
+                setTimeout(() => {
+                    addLog('Requesting admin messages...');
+                    socket.emit('admin-request-messages');
+                }, 500);
+            });
+            
+            socket.on('disconnect', (reason) => {
+                addLog(`❌ Disconnected: ${reason}`);
+                document.getElementById('socketId').textContent = 'Not connected';
+                updateConnectionStatus(false);
+            });
+            
+            socket.on('connect_error', (error) => {
+                addLog(`Connection error: ${error.message}`, 'error');
+            });
+            
+            // Listen for admin messages
+            socket.on('admin-messages-data', (messages) => {
+                addLog(`Received admin-messages-data: ${messages ? messages.length : 0} messages`);
+                handleReceivedMessages(messages);
+            });
+            
+            // Also listen for regular message history
+            socket.on('message-history', (messages) => {
+                addLog(`Received message-history: ${messages ? messages.length : 0} messages`);
+                handleReceivedMessages(messages);
+            });
+            
+            // Listen for new messages
+            socket.on('new-message', (message) => {
+                addLog(`New message from ${message.username}: ${message.text?.substring(0, 50)}...`);
+                if (!message.isVideo) {
+                    chatMessages.push(message);
+                    updateUI();
+                }
+            });
+            
+            socket.on('admin-clear-success', () => {
+                addLog('Messages cleared successfully');
+                chatMessages = [];
+                updateUI();
+            });
+            
+            // Listen for any event (for debugging)
+            socket.onAny((eventName, ...args) => {
+                addLog(`Event received: ${eventName}`);
+            });
+        }
+        
+        function handleReceivedMessages(messages) {
+            chatMessages = messages || [];
+            updateUI();
+            displayMessagePreview();
+        }
+        
+        function updateUI() {
+            document.getElementById('messageCount').textContent = chatMessages.length;
+            document.getElementById('memoryCount').textContent = chatMessages.length;
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+        
+        function displayMessagePreview() {
+            const preview = document.getElementById('messageList');
+            if (chatMessages.length === 0) {
+                preview.innerHTML = 'No messages yet';
+                return;
+            }
+            
+            const recentMessages = chatMessages.slice(-5).reverse();
+            preview.innerHTML = recentMessages.map(msg => 
+                `<div class="message-item">
+                    <strong>${msg.username}:</strong> ${msg.text || '[Media]'}
+                    <br><small>${new Date(msg.timestamp).toLocaleString()}</small>
+                </div>`
+            ).join('');
+        }
+        
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.innerHTML = '<span class="connection-indicator connected"></span><span style="font-size: 16px;">Online</span>';
+            } else {
+                statusEl.innerHTML = '<span class="connection-indicator disconnected"></span><span style="font-size: 16px;">Offline</span>';
+            }
+        }
+        
+        function refreshMessages() {
+            addLog('Manual refresh requested');
+            if (socket && socket.connected) {
+                socket.emit('admin-request-messages');
+            } else {
+                addLog('Cannot refresh - not connected', 'error');
+                initializeSocket();
+            }
+        }
+        
+        function testConnection() {
+            addLog('Testing connection...');
+            if (socket && socket.connected) {
+                addLog('Socket is connected');
+                socket.emit('admin-request-messages');
+            } else {
+                addLog('Socket not connected, attempting reconnection...');
+                initializeSocket();
+            }
+        }
+        
+        async function fetchViaHttp() {
+            addLog('Fetching messages via HTTP...');
+            try {
+                const response = await fetch(`${SERVER_URL}/api/messages`);
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`HTTP fetch successful: ${data.count} messages`);
+                    handleReceivedMessages(data.messages);
+                } else {
+                    addLog(`HTTP fetch failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addLog(`HTTP fetch error: ${error.message}`, 'error');
+            }
+        }
+        
+        function sendTestMessage() {
+            if (socket && socket.connected) {
+                const testMsg = {
+                    text: `Test message from admin at ${new Date().toLocaleTimeString()}`,
+                    username: 'Admin',
+                    timestamp: new Date().toISOString()
+                };
+                socket.emit('send-message', testMsg);
+                addLog('Test message sent');
+            } else {
+                addLog('Cannot send test message - not connected', 'error');
+            }
+        }
+        
+        function clearLog() {
+            debugLogs = [];
+            document.getElementById('debugLog').innerHTML = '';
+            addLog('Log cleared');
+        }
+        
+        function exportMessages() {
+            if (chatMessages.length === 0) {
+                addLog('No messages to export', 'warning');
+                return;
+            }
+            
+            const format = document.querySelector('input[name="format"]:checked').value;
+            let content, filename, mimeType;
+            
+            switch(format) {
+                case 'txt':
+                    content = chatMessages.map(msg => 
+                        `[${new Date(msg.timestamp).toLocaleString()}] ${msg.username}: ${msg.text || '[Media]'}`
+                    ).join('\n');
+                    filename = `chat_export_${Date.now()}.txt`;
+                    mimeType = 'text/plain';
+                    break;
+                    
+                case 'csv':
+                    const headers = 'Timestamp,Username,Message\n';
+                    const rows = chatMessages.map(msg => 
+                        `"${msg.timestamp}","${msg.username}","${(msg.text || '[Media]').replace(/"/g, '""')}"`
+                    ).join('\n');
+                    content = headers + rows;
+                    filename = `chat_export_${Date.now()}.csv`;
+                    mimeType = 'text/csv';
+                    break;
+                    
+                case 'json':
+                default:
+                    content = JSON.stringify(chatMessages, null, 2);
+                    filename = `chat_export_${Date.now()}.json`;
+                    mimeType = 'application/json';
+                    break;
+            }
+            
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            addLog(`Exported ${chatMessages.length} messages as ${format.toUpperCase()}`);
+        }
+        
+        // Format option selection
+        document.querySelectorAll('.format-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.format-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                this.classList.add('selected');
+            });
+        });
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            addLog('Page loaded, initializing...');
+            initializeSocket();
+        });
+    </script>
+</body>
+</html>
