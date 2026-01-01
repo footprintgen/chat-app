@@ -77,14 +77,11 @@ io.on('connection', (socket) => {
         // Send message history to newly connected user
         socket.emit('message-history', messageHistory);
         
-        // Create and store join message
-        const joinMessage = {
-            id: Date.now() + Math.random(),
-            text: `${finalUsername} joined the chat`,
-            username: 'System',
-            timestamp: new Date().toISOString(),
-            isSystemMessage: true
-        };
+        // Notify others about new user
+        socket.broadcast.emit('user-joined', {
+            username: activeUsers.get(socket.id).username,
+            timestamp: new Date().toISOString()
+        });
         
         messageHistory.push(joinMessage);
         if (messageHistory.length > 100) {
