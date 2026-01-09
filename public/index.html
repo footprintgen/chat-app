@@ -537,13 +537,13 @@
                 addMessage(message);
             });
             
-            socket.on('user-joined', (data) => {
+            /*socket.on('user-joined', (data) => {
                 addSystemMessage(`${data.username} joined the chat`);
             });
             
             socket.on('user-left', (data) => {
                 addSystemMessage(`${data.username} left the chat`);
-            });
+            });*/
             
             socket.on('users-update', (users) => {
                 updateUserCount(users.length);
